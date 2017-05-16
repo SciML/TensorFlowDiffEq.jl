@@ -19,7 +19,7 @@ function solve(
     timeseries = [], ts = [], ks = [];
     verbose=true, dt = nothing,
     callback = nothing, abstol = 1/10^6, reltol = 1/10^3,
-    saveat = Float64[], adaptive = true, maxiter = Int(1e5),
+    saveat = Float64[], adaptive = true, maxiters = 1000,
     timeseries_errors = true, save_everystep = isempty(saveat),
     dense = save_everystep,
     save_start = true, save_timeseries = nothing,
@@ -27,6 +27,9 @@ function solve(
     kwargs...)
 
     u0 = prob.u0
+    f = prob.f
+    tspan = prob.tspan
+
     if dt == nothing
       error("dt must be set.")
     end
@@ -47,15 +50,13 @@ function solve(
 
 
         du_dt = gradients(u, tt)
-        deq_rhs = - u/5 + exp(-tt/5).*cos(tt) # Should be f.(tt,u)
+        deq_rhs = f(tt,u) # - u/5 + exp(-tt/5).*cos(tt) # Should be f.(tt,u)
 
 
         loss = reduce_sum((du_dt - deq_rhs).^2)
         opt = train.minimize(train.AdamOptimizer(), loss)
     end
 
-
-    tspan = prob.tspan
     t_obs = collect(tspan[1]:dt:tspan[2])
 
     run(sess, global_variables_initializer())
