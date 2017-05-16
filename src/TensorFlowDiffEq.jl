@@ -40,46 +40,54 @@ function solve(
     hl_width=alg.hl_width
     f = prob.f
 
+    t_obs = collect(tspan[1]:dt:tspan[2])
 
     @tf begin #Automatically name nodes based on RHS
-        t = placeholder(Float32; shape=[-1])
+        t = constant(t_obs) #for now, just code this in as a constant
         tt = expand_dims(t, 2) #make it a matrix
 
-        w1 = get_variable([1,hl_width], Float32)
-        b1 = get_variable([hl_width], Float32)
-        w2 = get_variable([hl_width,length(u0)], Float32)
+        w1 = get_variable([1,hl_width], Float64)
+        b1 = get_variable([hl_width], Float64)
+        w2 = get_variable([hl_width,length(u0)], Float64)
 
         u = u0 + tt.*nn.sigmoid(tt*w1 + b1)*w2
 
 
         du_dt = gradients(u, tt)
-        deq_rhs = f(tt,u) # - u/5 + exp(-tt/5).*cos(tt) # Should be f.(tt,u)
+        # This whole section is a static graph generation
+        # bound to the length of t_obs
+        # todo: rewrite to by dynamic
 
+        deq_rhs_steps = Vector{Tensor}()
+        for t_ii in 1:get_shape(t,1)
+            val =  f(t[t_ii], u[t_ii,:])
+            push!(deq_rhs_steps, val)
+        end
+        deq_rhs = vcat(deq_rhs_steps...)
 
-        loss = reduce_mean((du_dt - deq_rhs).^2)
+        loss = reduce_sum((du_dt - deq_rhs).^2)
         opt = train.minimize(train.AdamOptimizer(), loss)
     end
 
-    t_obs = collect(tspan[1]:dt:tspan[2])
 
     run(sess, global_variables_initializer())
     for ii in 1:maxiters
-        _, loss_o = run(sess, [opt, loss], Dict(t=>t_obs))
+        _, loss_o = run(sess, [opt, loss])
         if verbose && ii%50 == 1
             println(loss_o)
         end
     end
 
 
-    u_net = run(sess, u, Dict(t=>t_obs))
+    u_net = run(sess, u)
 
     if typeof(u0) <: AbstractArray
-    timeseries = Vector{typeof(u0)}(0)
-    for i=1:size(u_net, 1)
-        push!(timeseries, reshape(view(u_net, i, :)', size(u0)))
-    end
+        timeseries = Vector{typeof(u0)}(0)
+        for i=1:size(u_net, 1)
+            push!(timeseries, reshape(view(u_net, i, :)', size(u0)))
+        end
     else
-        timeseries = vec(u_net)
+            timeseries = vec(u_net)
     end
 
     build_solution(prob,alg,t_obs,timeseries,
