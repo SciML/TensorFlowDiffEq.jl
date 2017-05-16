@@ -31,7 +31,7 @@ function solve(
 
     u0 = prob.u0
     tspan = prob.tspan
-    
+
     if dt == nothing
       error("dt must be set.")
     end
@@ -40,67 +40,46 @@ function solve(
     hl_width=alg.hl_width
     f = prob.f
 
-    outdim = length(u0)
-
-    t_obs = collect(tspan[1]:dt:tspan[2])
 
     @tf begin #Automatically name nodes based on RHS
-        t = constant(t_obs)
+        t = placeholder(Float32; shape=[-1])
         tt = expand_dims(t, 2) #make it a matrix
 
-        # u_trial trail network definition
-        w1 = get_variable([1,hl_width], Float64)
-        b1 = get_variable([hl_width], Float64)
-        w2 = get_variable([hl_width,outdim], Float64)
+        w1 = get_variable([1,hl_width], Float32)
+        b1 = get_variable([hl_width], Float32)
+        w2 = get_variable([hl_width,length(u0)], Float32)
 
         u = u0 + tt.*nn.sigmoid(tt*w1 + b1)*w2
 
-        # DiffEquation Definition
-        # This whole section is a static graph generation
-        if outdim>1 #FIXME: Bug in Tensorflow.jl will not concat a single tensor
-            du_dt = hcat(map(1:outdim) do u_ii
-                gradients(u[:,u_ii], tt)
-            end...)
-        else
-            du_dt = gradients(u,tt)
-        end
 
-        deq_rhs = vcat(map(1:length(t_obs)) do t_ii
-            f(t[t_ii], u[t_ii,:])
-        end...)
-       
-        #Loss function and optimisation
-        loss = reduce_sum((du_dt - deq_rhs).^2)
+        du_dt = gradients(u, tt)
+        deq_rhs = f(tt,u) # - u/5 + exp(-tt/5).*cos(tt) # Should be f.(tt,u)
+
+
+        loss = reduce_mean((du_dt - deq_rhs).^2)
         opt = train.minimize(train.AdamOptimizer(), loss)
     end
 
+    t_obs = collect(tspan[1]:dt:tspan[2])
+
     run(sess, global_variables_initializer())
-
-    if (verbose)
-        @show run(sess, size(u))
-        @show run(sess, size(du_dt))
-        @show run(sess, size(deq_rhs))
-    end
-
-    verbose && println("fitting u_net(t)")
     for ii in 1:maxiters
-        _, loss_o = run(sess, [opt, loss])
+        _, loss_o = run(sess, [opt, loss], Dict(t=>t_obs))
         if verbose && ii%50 == 1
             println(loss_o)
         end
     end
-    
-    verbose && println("get final estimates with u_net(t)")
-    u_net = run(sess, u)
-    verbose && println("preparing results")
+
+
+    u_net = run(sess, u, Dict(t=>t_obs))
 
     if typeof(u0) <: AbstractArray
-        timeseries = Vector{typeof(u0)}(0)
-        for i=1:size(u_net, 1)
-            push!(timeseries, reshape(view(u_net, i, :)', size(u0)))
-        end
+    timeseries = Vector{typeof(u0)}(0)
+    for i=1:size(u_net, 1)
+        push!(timeseries, reshape(view(u_net, i, :)', size(u0)))
+    end
     else
-            timeseries = vec(u_net)
+        timeseries = vec(u_net)
     end
 
     build_solution(prob,alg,t_obs,timeseries,
