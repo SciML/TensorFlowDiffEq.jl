@@ -24,7 +24,7 @@ function solve(
     callback = nothing, abstol = 1/10^6, reltol = 1/10^3,
     saveat = Float64[], adaptive = true, maxiters = 1000,
     timeseries_errors = true, save_everystep = isempty(saveat),
-    dense = save_everystep,
+    dense = save_everystep, progress_steps = 50,
     save_start = true, save_timeseries = nothing,
     userdata = nothing,
     kwargs...)
@@ -57,8 +57,9 @@ function solve(
 
         u = u0 + tt.*nn.sigmoid(tt*w1 + b1)*w2
 
-
-        du_dt = gradients(u, tt)
+        du_dt = hcat(map(1:outdim) do u_ii
+                gradients(u[:,u_ii], tt)
+        end...)
         deq_rhs = f(tt,u) # - u/5 + exp(-tt/5).*cos(tt) # Should be f.(tt,u)
 
 
@@ -76,7 +77,8 @@ function solve(
 
     for ii in 1:maxiters
         _, loss_o = run(sess, [opt, loss])
-        if verbose && ii%50 == 1
+        if verbose && ii%progress_steps == 1
+            @show run(sess, size(du_dt))
             println(loss_o)
         end
     end
