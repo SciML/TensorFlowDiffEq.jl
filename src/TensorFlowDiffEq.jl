@@ -40,14 +40,20 @@ function solve(
     hl_width=alg.hl_width
     f = prob.f
 
+    uElType = eltype(u0)
+    tType = typeof(tspan[1])
+    outdim = length(u0)
+    t_obs = collect(tspan[1]:tType(dt):tspan[2])
+
 
     @tf begin #Automatically name nodes based on RHS
-        t = placeholder(Float32; shape=[-1])
+        t = constant(t_obs)
         tt = expand_dims(t, 2) #make it a matrix
 
-        w1 = get_variable([1,hl_width], Float32)
-        b1 = get_variable([hl_width], Float32)
-        w2 = get_variable([hl_width,length(u0)], Float32)
+        # u_trial trail network definition
+        w1 = get_variable([1,hl_width], uElType)
+        b1 = get_variable([hl_width], uElType)
+        w2 = get_variable([hl_width,outdim], uElType)
 
         u = u0 + tt.*nn.sigmoid(tt*w1 + b1)*w2
 
@@ -60,21 +66,27 @@ function solve(
         opt = train.minimize(train.AdamOptimizer(), loss)
     end
 
-    t_obs = collect(tspan[1]:dt:tspan[2])
-
     run(sess, global_variables_initializer())
+
+    if (verbose)
+      @show run(sess, size(u))
+      @show run(sess, size(du_dt))
+      @show run(sess, size(deq_rhs))
+    end
+
     for ii in 1:maxiters
-        _, loss_o = run(sess, [opt, loss], Dict(t=>t_obs))
+        _, loss_o = run(sess, [opt, loss])
         if verbose && ii%50 == 1
             println(loss_o)
         end
     end
 
-
-    u_net = run(sess, u, Dict(t=>t_obs))
+    verbose && println("get final estimates with u_net(t)")
+    u_net = run(sess, u)
+    verbose && println("preparing results")
 
     if typeof(u0) <: AbstractArray
-    timeseries = Vector{typeof(u0)}(0)
+        timeseries = Vector{typeof(u0)}(0)
     for i=1:size(u_net, 1)
         push!(timeseries, reshape(view(u_net, i, :)', size(u0)))
     end
