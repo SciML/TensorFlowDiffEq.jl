@@ -57,9 +57,14 @@ function solve(
 
         u = u0 + tt.*nn.sigmoid(tt*w1 + b1)*w2
 
-        du_dt = hcat(map(1:outdim) do u_ii
+        if outdim>1 #FIXME: Bug in Tensorflow.jl will not concat a single tensor
+            du_dt = hcat(map(1:outdim) do u_ii
                 gradients(u[:,u_ii], tt)
-        end...)
+            end...)
+        else
+            du_dt = gradients(u,tt)
+        end
+        
         deq_rhs = f(tt,u) # - u/5 + exp(-tt/5).*cos(tt) # Should be f.(tt,u)
 
 
