@@ -84,20 +84,33 @@ function solve(
     end
 
     verbose && println("get final estimates with u_net(t)")
-    u_net = run(sess, u)
+    u_net, du_dt_net = run(sess, [u, du_dt])
     verbose && println("preparing results")
 
     if typeof(u0) <: AbstractArray
         timeseries = Vector{typeof(u0)}(0)
+        if dense
+            du = Vector{typeof(u0)}(0)
+        end
     for i=1:size(u_net, 1)
         push!(timeseries, reshape(view(u_net, i, :)', size(u0)))
+        if dense
+            push!(du, reshape(view(du_dt_net, i, :)', size(u0)))
+        end
     end
     else
         timeseries = vec(u_net)
+        if dense
+          du = vec(du_dt_net)
+        end
+    end
+  
+    if !dense
+      du = []
     end
 
     build_solution(prob,alg,t_obs,timeseries,
-               dense = dense,
+               dense = dense, du = du,
                timeseries_errors = timeseries_errors,
                retcode = :Success)
 
