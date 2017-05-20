@@ -3,7 +3,7 @@ using TensorFlowDiffEq
 using Base.Test
 
 using Plots; plotly()
-using DiffEqBase, ParameterizedFunctions
+using DiffEqBase, ParameterizedFunctions, DiffEqDevTools
 
 # Toy problem 1
 
@@ -13,6 +13,10 @@ prob = ODEProblem(f,Float32(0.0),(Float32(0.0),Float32(2.0)))
 sol = solve(prob,odetf(),dt=0.02)
 
 plot(sol,plot_analytic=true)
+
+dts = 1./2.^(7:-1:4) #14->7 good plot
+sim  = test_convergence(dts,prob,odetf(),maxiters=Int(1e5))
+@test abs(sim.𝒪est[:l2]-1) < 0.2
 
 # Problem 2
 
