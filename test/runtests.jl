@@ -22,9 +22,15 @@ function lotka_voltera_tf(t,u)
   [du1 du2]
 end
 prob = ODEProblem(lotka_voltera_tf,Float32[1.0,1.0],(Float32(0.0),Float32(10.0)))
-sol = solve(prob,odetf(hl_width=512),dt=0.01,maxiters=Int(1e4),progress_steps=500)
-
+sol = solve(prob,odetf(hl_width=[256]),dt=0.01,maxiters=Int(1e4),progress_steps=500)
 plot(sol)
+
+sol = solve(prob,odetf(hl_width=[128,128]),dt=0.01,maxiters=Int(1e4),progress_steps=500)
+plot(sol)
+
+sol = solve(prob,odetf(hl_width=[128,64, 64]),dt=0.01,maxiters=Int(1e4),progress_steps=500)
+plot(sol)
+
 
 # Toy problem 3
 
