@@ -3,7 +3,7 @@ using TensorFlowDiffEq
 using Base.Test
 
 using Plots; plotly()
-using DiffEqBase, ParameterizedFunctions,
+using DiffEqBase, ParameterizedFunctions
 using DiffEqProblemLibrary, DiffEqDevTools
 
 # Toy problem 1
@@ -14,6 +14,9 @@ prob = ODEProblem(f,Float32(0.0),(Float32(0.0),Float32(2.0)))
 sol = solve(prob,odetf(),dt=0.02)
 
 plot(sol,plot_analytic=true)
+
+prob = ODEProblem(f,0.0,(0.0,2.0))
+sol = solve(prob,odetf(),dt=0.02)
 
 dts = 1./2.^(14:-1:7) #14->7 good plot
 prob = ODEProblem(f,0.0,(0.0,1.0))

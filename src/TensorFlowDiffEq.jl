@@ -20,7 +20,9 @@ function solve(
     prob::AbstractODEProblem,
     alg::TensorFlowAlgorithm,
     timeseries = [], ts = [], ks = [];
-    verbose=true, dt = nothing,
+    verbose=true, dt = nothing, maxiters = Int(1e4),
+    progress_steps = 100, dense = true,
+    timeseries_errors = true,
     kwargs...)
 
     u0 = prob.u0
