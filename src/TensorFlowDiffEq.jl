@@ -7,10 +7,29 @@ import DiffEqBase: solve
 @compat abstract type TensorFlowAlgorithm <: AbstractODEAlgorithm end
 
 # DAE Algorithms
-immutable odetf <: TensorFlowAlgorithm
+immutable odetf{Opt<:train.Optimizer} <: TensorFlowAlgorithm
   hl_width::Int
+  optimizer::Opt
 end
-odetf(;hl_width=64) = odetf(hl_width)
+
+"""
+    odetf
+Specify the hyper-parameters used by the TensorFlow solver.
+Including the optimisation hyper-paramters
+
+for example
+```julia
+odetf(
+    hl_width=256,
+    # use a neural network with 256 neurons in one-hiddlen layer in trail solution
+    optimizer=train.MomentumOptimizer(0.5, 0.9)
+    # Fit the network using a momentum based optimizser, learning rate of 0.5, momentum of 0.9
+)
+```
+"""
+function odetf(;hl_width=64, optimizer=train.AdamOptimizer())
+    odetf(hl_width, optimizer)
+end
 
 export odetf
 
@@ -69,7 +88,7 @@ function solve(
 
 
         loss = reduce_mean((du_dt - deq_rhs).^2)
-        opt = train.minimize(train.AdamOptimizer(), loss)
+        opt = train.minimize(alg.optimizer, loss)
     end
 
     run(sess, global_variables_initializer())
