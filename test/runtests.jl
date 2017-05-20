@@ -14,8 +14,14 @@ sol = solve(prob,odetf(),dt=0.02)
 
 plot(sol,plot_analytic=true)
 
-dts = 1./2.^(7:-1:4) #14->7 good plot
+dts = 1./2.^(14:-1:7) #14->7 good plot
 sim  = test_convergence(dts,prob,odetf(),maxiters=Int(1e5))
+@test abs(sim.𝒪est[:l2]-1) < 0.2
+
+# Standard Convergence Problem
+
+dts = 1./2.^(14:-1:7) #14->7 good plot
+sim  = test_convergence(dts,prob_ode_linear,odetf(),maxiters=Int(1e5))
 @test abs(sim.𝒪est[:l2]-1) < 0.2
 
 # Problem 2

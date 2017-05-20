@@ -21,12 +21,6 @@ function solve(
     alg::TensorFlowAlgorithm,
     timeseries = [], ts = [], ks = [];
     verbose=true, dt = nothing,
-    callback = nothing, abstol = 1/10^6, reltol = 1/10^3,
-    saveat = Float64[], adaptive = true, maxiters = 1000,
-    timeseries_errors = true, save_everystep = isempty(saveat),
-    dense = save_everystep, progress_steps = 50,
-    save_start = true, save_timeseries = nothing,
-    userdata = nothing,
     kwargs...)
 
     u0 = prob.u0
@@ -64,7 +58,7 @@ function solve(
         else
             du_dt = gradients(u,tt)
         end
-        
+
         deq_rhs = f(tt,u) # - u/5 + exp(-tt/5).*cos(tt) # Should be f.(tt,u)
 
 
@@ -109,7 +103,7 @@ function solve(
           du = vec(du_dt_net)
         end
     end
-  
+
     if !dense
       du = []
     end
