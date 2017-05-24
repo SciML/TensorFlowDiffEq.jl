@@ -7,10 +7,38 @@ import DiffEqBase: solve, interpolation
 @compat abstract type TensorFlowAlgorithm <: AbstractODEAlgorithm end
 
 # DAE Algorithms
-immutable odetf <: TensorFlowAlgorithm
-  hl_width::Int
+immutable odetf{Opt<:train.Optimizer} <: TensorFlowAlgorithm
+  hl_widths::Vector{Int}
+  optimizer::Opt
 end
-odetf(;hl_width=64) = odetf(hl_width)
+
+"""
+    odetf
+Specify the hyper-parameters used by the TensorFlow solver.
+Including the optimisation hyper-paramters
+
+for example
+```julia
+odetf(
+    256,
+    # use a neural network with 256 neurons in one-hiddlen layer in trail solution
+    optimizer=train.MomentumOptimizer(0.5, 0.9)
+    # Fit the network using a momentum based optimizser, learning rate of 0.5, momentum of 0.9
+)
+```
+
+To make a deep network, pass a `Vector` to `hl_width`, given the width of each hiddden layer
+Eg a 3 layer network
+```julia
+odetf(hl_width = [64, 128, 64])
+```
+"""
+function odetf(;hl_width=64, optimizer=train.AdamOptimizer())
+    odetf(hl_width, optimizer)
+end
+
+odetf(hl_width::Integer, optimizer) = odetf([hl_width], optimizer)
+
 
 export odetf
 
@@ -75,7 +103,6 @@ function solve(
     end
 
     sess=Session(Graph())
-    hl_width=alg.hl_width
     f = prob.f
 
     uElType = eltype(u0)
@@ -88,18 +115,25 @@ function solve(
         t = placeholder(tType, shape=[-1])
         tt = expand_dims(t, 2) #make it a matrix
 
-        # u_trial trail network definition
-        w1 = get_variable([1,hl_width], uElType)
-        b1 = get_variable([hl_width], uElType)
-        w2 = get_variable([hl_width,outdim], uElType)
+        # u_trial trial network definition
+        z = tt
+        for (ii, hl_width) in enumerate(alg.hl_widths)
+            width_below = get_shape(z, 2)
+            w = get_variable("w_$ii", [width_below, hl_width], uElType)
+            b = get_variable("b_$ii", [hl_width], uElType)
+            z = nn.sigmoid(z*w + b; name="z_$ii")
+        end
+        width_below = get_shape(z, 2)
+        w_out = get_variable([width_below, outdim], uElType)
 
-        u = u0 + tt.*nn.sigmoid(tt*w1 + b1)*w2
+    
+        u = u0 + tt.*z*w_out
         du_dt = grads(u, tt)
         deq_rhs = f(tt,u)
 
 
         loss = reduce_mean((du_dt - deq_rhs).^2)
-        opt = train.minimize(train.AdamOptimizer(), loss)
+        opt = train.minimize(alg.optimizer, loss)
     end
 
     run(sess, global_variables_initializer())
