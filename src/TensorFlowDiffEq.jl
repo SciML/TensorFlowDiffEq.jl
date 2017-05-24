@@ -15,43 +15,42 @@ odetf(;hl_width=64) = odetf(hl_width)
 export odetf
 
 
-immutable TensorFlowInterpolation
+immutable TensorFlowInterpolation{uElType}
     sess::Session
+    u::Tensor{uElType}
 end
 
 
-grad_node(graph, deriv::Type{Val{0}}) = graph["u"]
-grad_node(graph, deriv::Type{Val{1}}) = graph["du_dt"]
+grad_node(interp, deriv::Type{Val{0}}) = interp.u
 
-function grad_node{N}(graph, deriv::Type{Val{N}})
+function grad_node{N}(interp, deriv::Type{Val{N}})
     N >= 0 || throw(DomainError())
-    name = "du$(N)_dt$(N)"
-    if haskey(graph, name)
-            # Don't create the node if it already exists
-        graph["name"]
-        else
+    #GOLDPLATE: this code could be enhanced, a lot. Right now it creates new nodes in the graph every time it is called. Which is a minor waste. The fix makes the code pretty hard to read and so I do not think it is worth it.
+    as_default(interp.sess.graph) do
+        prev = grad_node(interp, Val{N-1})
+        tt = interp.sess.graph["tt"] #load the `tt` node from the graph
+        grads(prev, tt)
     end
-    as_default(sess.graph) do
-
-        grads(
-        v0  = graph["u"]
-        v1 = graph["du_dt"
-
-        end
+end
 
 function (id::TensorFlowInterpolation){N}(tvals, idxs, deriv::Type{Val{N}})
+    gn = grad_node(id, derviv)
+    vals = run(id.sess, gn, Dict(t=>tvals))
+    #PREM-OPT: the indexing could be moved inside the network, to avoid even calculating gradients for columns are are not using, by first slicing `interp.u` inside the `grad_node` function.
+    vals[:,idxs]'
 end
 
-const tf=TensorFlow #required to use @op to register name automatically with @tf blcoks
+function (id::TensorFlowInterpolation){N}(v, tvals, idxs, deriv::Type{Val{N}})
+    # In-place version, noting that truely inplace operations between julia and tensorflow are actually impossible
+    v[:] = @view id(tvals, idxs, deriv)[:]
+end
+
 "Calculate the gradient per column of us, with regards to ts"
-TensorFlow.@op function grads(us, ts; name=nothing)
+function grads(us, ts)
     outdim = get_shape(us, 2)
-    dus_dts = hcat(map(1:outdim) do u_ii
+    hcat(map(1:outdim) do u_ii
         gradients(us[:,u_ii], ts)
     end...)
-    
-    identity(dus_dts, name=name) #hack to give it a name. 
-    #FIXME: hcat could do with a name field
 end
 
 
@@ -144,6 +143,7 @@ function solve(
 
     build_solution(prob,alg,t_obs,timeseries,
                dense = dense, du = du,
+               interp = TensorFlowInterpolation(sess, u),
                timeseries_errors = timeseries_errors,
                retcode = :Success)
 
