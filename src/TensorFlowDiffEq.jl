@@ -40,6 +40,8 @@ function (id::TensorFlowInterpolation){N}(tvals, idxs, deriv::Type{Val{N}})
     vals[:,idxs]'
 end
 
+(id::TensorFlowInterpolation)(tval::Number, idxs, deriv) = id([tval], idxs, deriv)
+
 function (id::TensorFlowInterpolation){N}(v, tvals, idxs, deriv::Type{Val{N}})
     # In-place version, noting that truely inplace operations between julia and tensorflow are actually impossible
     v[:] = @view id(tvals, idxs, deriv)[:]
