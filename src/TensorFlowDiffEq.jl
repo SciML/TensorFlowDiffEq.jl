@@ -1,7 +1,7 @@
 module TensorFlowDiffEq
 
 using DiffEqBase, TensorFlow, Compat
-import DiffEqBase: solve
+import DiffEqBase: solve, interpolation
 
 # Abstract Types
 @compat abstract type TensorFlowAlgorithm <: AbstractODEAlgorithm end
@@ -15,11 +15,43 @@ odetf(;hl_width=64) = odetf(hl_width)
 export odetf
 
 
-function grads(us, ts)
+immutable TensorFlowInterpolation
+    sess::Session
+end
+
+
+grad_node(graph, deriv::Type{Val{0}}) = graph["u"]
+grad_node(graph, deriv::Type{Val{1}}) = graph["du_dt"]
+
+function grad_node{N}(graph, deriv::Type{Val{N}})
+    N >= 0 || throw(DomainError())
+    name = "du$(N)_dt$(N)"
+    if haskey(graph, name)
+            # Don't create the node if it already exists
+        graph["name"]
+        else
+    end
+    as_default(sess.graph) do
+
+        grads(
+        v0  = graph["u"]
+        v1 = graph["du_dt"
+
+        end
+
+function (id::TensorFlowInterpolation){N}(tvals, idxs, deriv::Type{Val{N}})
+end
+
+const tf=TensorFlow #required to use @op to register name automatically with @tf blcoks
+"Calculate the gradient per column of us, with regards to ts"
+TensorFlow.@op function grads(us, ts; name=nothing)
     outdim = get_shape(us, 2)
-    hcat(map(1:outdim) do u_ii
+    dus_dts = hcat(map(1:outdim) do u_ii
         gradients(us[:,u_ii], ts)
     end...)
+    
+    identity(dus_dts, name=name) #hack to give it a name. 
+    #FIXME: hcat could do with a name field
 end
 
 
