@@ -13,6 +13,7 @@ f = (t,u) -> -u/5 + exp(-t/5).*cos(t)
 prob = ODEProblem(f,Float32(0.0),(Float32(0.0),Float32(2.0)))
 sol = solve(prob,odetf(),dt=0.02)
 
+sol(0.5)
 plot(sol,plot_analytic=true)
 
 prob = ODEProblem(f,0.0,(0.0,2.0))

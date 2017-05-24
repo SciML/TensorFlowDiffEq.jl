@@ -62,13 +62,13 @@ function grad_node{N}(interp, deriv::Type{Val{N}})
 end
 
 function (id::TensorFlowInterpolation){N}(tvals, idxs, deriv::Type{Val{N}})
-    gn = grad_node(id, derviv)
+    gn = grad_node(id, deriv)
     vals = run(id.sess, gn, Dict(t=>tvals))
     #PREM-OPT: the indexing could be moved inside the network, to avoid even calculating gradients for columns are are not using, by first slicing `interp.u` inside the `grad_node` function.
     vals[:,idxs]'
 end
 
-(id::TensorFlowInterpolation)(tval::Number, idxs, deriv) = id([tval], idxs, deriv)
+(id::TensorFlowInterpolation){N}(tval::Number, idxs, deriv::Type{Val{N}}) = id([tval], idxs, deriv)
 
 function (id::TensorFlowInterpolation){N}(v, tvals, idxs, deriv::Type{Val{N}})
     # In-place version, noting that truely inplace operations between julia and tensorflow are actually impossible
@@ -93,6 +93,7 @@ function solve(
     verbose=true, dt = nothing, maxiters = Int(1e4),
     progress_steps = 100, dense = true,
     timeseries_errors = true,
+    dense_errors = false,
     kwargs...)
 
     u0 = prob.u0
@@ -126,7 +127,7 @@ function solve(
         width_below = get_shape(z, 2)
         w_out = get_variable([width_below, outdim], uElType)
 
-    
+
         u = u0 + tt.*z*w_out
         du_dt = grads(u, tt)
         deq_rhs = f(tt,u)
@@ -181,6 +182,7 @@ function solve(
                dense = dense, du = du,
                interp = TensorFlowInterpolation(sess, u),
                timeseries_errors = timeseries_errors,
+               dense_errors = dense_errors,
                retcode = :Success)
 
   end
