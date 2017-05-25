@@ -63,12 +63,14 @@ end
 
 function (id::TensorFlowInterpolation){N}(tvals, idxs, deriv::Type{Val{N}})
     gn = grad_node(id, deriv)
-    vals = run(id.sess, gn, Dict(t=>tvals))
+    vals = [run(id.sess, gn, Dict(id.sess.graph["t"]=>[t]))' for t in tvals]
     #PREM-OPT: the indexing could be moved inside the network, to avoid even calculating gradients for columns are are not using, by first slicing `interp.u` inside the `grad_node` function.
-    vals[:,idxs]'
+    idxs == nothing ? _ret = vals : _ret = [val[:,idxs] for val in vals]
+    typeof(idxs) <: Number || (idxs == nothing && length(first(_ret)) == 1) ? (ret = [first(_r) for _r in _ret]) : (ret = _ret)
+    ret
 end
 
-(id::TensorFlowInterpolation){N}(tval::Number, idxs, deriv::Type{Val{N}}) = id([tval], idxs, deriv)
+(id::TensorFlowInterpolation){N}(tval::Number, idxs, deriv::Type{Val{N}}) = first(id([tval], idxs, deriv))
 
 function (id::TensorFlowInterpolation){N}(v, tvals, idxs, deriv::Type{Val{N}})
     # In-place version, noting that truely inplace operations between julia and tensorflow are actually impossible

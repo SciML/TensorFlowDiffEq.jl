@@ -14,14 +14,17 @@ prob = ODEProblem(f,Float32(0.0),(Float32(0.0),Float32(2.0)))
 sol = solve(prob,odetf(),dt=0.02)
 
 sol(0.5)
+sol(0.5,idxs=1)
 plot(sol,plot_analytic=true)
 
 prob = ODEProblem(f,0.0,(0.0,2.0))
 sol = solve(prob,odetf(),dt=0.02)
 
-dts = 1./2.^(14:-1:7) #14->7 good plot
+sol = solve(prob,odetf(hl_width=[128,64,32,64,128]),dt=0.02,maxiters=Int(1e5))
+
+dts = 1./2.^(8:-1:2) #14->7 good plot
 prob = ODEProblem(f,0.0,(0.0,1.0))
-sim  = test_convergence(dts,prob,odetf(),maxiters=Int(1e5))
+sim  = test_convergence(dts,prob,odetf(hl_width=[128,64,32,64,128]))
 @test abs(sim.𝒪est[:l2]-1) < 0.2
 
 # Standard Convergence Problem
@@ -39,6 +42,9 @@ function lotka_voltera_tf(t,u)
 end
 prob = ODEProblem(lotka_voltera_tf,Float32[1.0,1.0],(Float32(0.0),Float32(10.0)))
 sol = solve(prob,odetf(hl_width=[256]),dt=0.01,maxiters=Int(1e4),progress_steps=500)
+
+sol(0.5,idxs=1)
+sol([0.5,0.52])
 plot(sol)
 
 sol = solve(prob,odetf(hl_width=[128,128]),dt=0.01,maxiters=Int(1e4),progress_steps=500)
@@ -46,7 +52,6 @@ plot(sol)
 
 sol = solve(prob,odetf(hl_width=[128,64, 64]),dt=0.01,maxiters=Int(1e4),progress_steps=500)
 plot(sol)
-
 
 # Toy problem 3
 
