@@ -6,7 +6,7 @@ import DiffEqBase: solve, interpolation
 # Abstract Types
 @compat abstract type TensorFlowAlgorithm <: AbstractODEAlgorithm end
 
-# DAE Algorithms
+# ODE Algorithms
 immutable odetf{Opt<:train.Optimizer} <: TensorFlowAlgorithm
   hl_widths::Vector{Int}
   optimizer::Opt
@@ -84,9 +84,6 @@ function grads(us, ts)
         gradients(us[:,u_ii], ts)
     end...)
 end
-
-
-## Solve for DAEs uses raw_solver
 
 function solve(
     prob::AbstractODEProblem,
