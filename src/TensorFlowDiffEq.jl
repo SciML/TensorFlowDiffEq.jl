@@ -107,9 +107,11 @@ function solve(
 
     uElType = eltype(u0)
     tType = typeof(tspan[1])
+    t0 = tspan[1] # t0 is a constant as part of the u(t) 
+                  # so that even if interpolating to a different domain t0 remains from the training domain.
     outdim = length(u0)
     t_obs = collect(tspan[1]:tType(dt):tspan[2])
-
+  
 
     @tf begin #Automatically name nodes based on RHS
         t = placeholder(tType, shape=[-1])
@@ -127,7 +129,7 @@ function solve(
         w_out = get_variable([width_below, outdim], uElType)
 
 
-        u = u0 + tt.*z*w_out
+        u = u0 + (tt .- t0).*z*w_out
         du_dt = grads(u, tt)
         deq_rhs = f(tt,u)
 
