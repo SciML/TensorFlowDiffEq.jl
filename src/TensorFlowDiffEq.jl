@@ -1,6 +1,9 @@
 module TensorFlowDiffEq
 
-using DiffEqBase, TensorFlow, Compat
+using Reexport
+@reexport using DiffEqBase
+  
+using TensorFlow, Compat
 import DiffEqBase: solve, interpolation
 
 # Abstract Types
