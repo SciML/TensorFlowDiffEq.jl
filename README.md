@@ -1,6 +1,6 @@
 # TensorFlowDiffEq
 
-[![Build Status](https://travis-ci.org/ChrisRackauckas/TensorFlowDiffEq.jl.svg?branch=master)](https://travis-ci.org/ChrisRackauckas/TensorFlowDiffEq.jl)
+[![Build Status](https://github.com/SciML/TensorFlowDiffEq.jl/workflows/CI/badge.svg)](https://github.com/SciML/TensorFlowDiffEq.jl/actions?query=workflow%3ACI)
 
 [![Coverage Status](https://coveralls.io/repos/ChrisRackauckas/TensorFlowDiffEq.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/ChrisRackauckas/TensorFlowDiffEq.jl?branch=master)
 
